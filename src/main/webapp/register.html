@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Register Page</title>
+    <!-- 引入Vue和ElementUI的CSS文件 -->
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <!-- 引入Vue和ElementUI的JS文件 -->
+    <script src="./js/vue.js"></script>
+    <script src="./js/index.js"></script>
+    <!-- 引入Axios的JS文件 -->
+    <script src="./js/axios.js"></script>
+    <style>
+        /* 将 body 元素设置为 Flexbox 容器，并使其垂直和水平居中对齐 */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        /* 设置注册框的样式 */
+        #register-box {
+            width: 400px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+
+<body>
+<div id="app">
+    <div id="register-box">
+        <el-form ref="registerForm" :model="registerForm" :rules="registerFormRules" label-width="80px">
+            <el-form-item label="用户名" prop="username">
+                <el-input v-model="registerForm.username"></el-input>
+            </el-form-item>
+            <el-form-item label="密码" prop="password">
+                <el-input type="password" v-model="registerForm.password"></el-input>
+            </el-form-item>
+            <el-form-item label="确认密码" prop="confirmPassword">
+                <el-input type="password" v-model="registerForm.confirmPassword"></el-input>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" @click="submitForm('registerForm')">注册</el-button>
+            </el-form-item>
+        </el-form>
+    </div>
+</div>
+
+<script>
+    new Vue({
+        el: '#app',
+        data() {
+            return {
+                registerForm: {
+                    username: '',
+                    password: '',
+                    confirmPassword: ''
+                },
+                registerFormRules: {
+                    username: [
+                        {required: true, message: '请输入用户名', trigger: 'blur'}
+                    ],
+                    password: [
+                        {required: true, message: '请输入密码', trigger: 'blur'},
+                        {min: 6, max: 20, message: '密码长度在6到20个字符之间', trigger: 'blur'}
+                    ],
+                    confirmPassword: [
+                        {required: true, message: '请再次输入密码', trigger: 'blur'},
+                        {validator: this.checkConfirmPassword, trigger: 'blur'}
+                    ]
+                }
+            }
+        },
+        methods: {
+            // 自定义验证器，验证两次输入的密码是否一致
+            checkConfirmPassword(rule, value, callback) {
+                if (value !== this.registerForm.password) {
+                    callback(new Error('两次输入的密码不一致'))
+                } else {
+                    callback()
+                }
+            },
+            // 提交表单
+            submitForm(formName) {
+                this.$refs[formName].validate((valid) => {
+                    if (valid) {
+                        this.doRegister()
+                    } else {
+                        return false
+                    }
+                })
+            },
+            // 执行注册操作
+
+            doRegister() {
+                var params = new URLSearchParams();
+                var username = this.registerForm.username;
+                var password = this.registerForm.password;
+                params.append('username', username);
+                params.append('password', password);
+                console.log(params);
+                // 使用Axios发送数据
+                axios.post('http://localhost:8080/article2.0/register', params)
+                    .then(response => {
+                        //this.$message.success('注册成功')
+                        //0为 false
+                        //1为 true
+                        console.log(response.data);
+                        // console.log(response.data == 1);
+                        // console.log(response.data == 0);
+                        if (response.data == 1) {
+                            this.$message.success('注册成功')
+                            window.location.href = 'login.html';
+                        } else if (response.data == 0) {
+                            this.$message.error('用户名已存在')
+                        }
+                    })
+                    .catch(error => {
+                        this.$message.error('注册失败')
+                    })
+            }
+        }
+    })
+</script>
+</body>
+
+</html>

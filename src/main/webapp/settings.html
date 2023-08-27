@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>关注管理</title>
+    <!-- 引入Vue和ElementUI的CSS文件 -->
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css"/>
+    <!-- 引入Vue和ElementUI的JS文件 -->
+    <script src="https://unpkg.com/vue@2.6.14"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <!-- 引入Axios的JS文件 -->
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+
+<!-- 设置<body>的overflow属性为hidden，以禁止页面滚动条 -->
+
+<body style="overflow: hidden;">
+<div id="app">
+    <!-- 整个页面使用一个容器元素 -->
+    <el-container style="height: 100vh;">
+        <!-- 顶部区域，高度为100px，背景颜色为#B3C0D1 -->
+        <el-header style="height: 100px; background-color: #B3C0D1; color: #333; text-align: center;">
+            <span style="font-size: 36px">文章管理系统</span>
+            <el-button style="position: absolute; right: 20px; top: 20px;" type="danger"
+                       @click="logout()">退出
+            </el-button>
+        </el-header>
+        <!-- 内容区域，占满剩余空间 -->
+        <el-container style="height: calc(100vh - 100px);">
+            <!-- 左侧菜单区域，宽度为200px，背景颜色为#D3DCE6，高度与内容区域相同 -->
+            <el-aside
+                    style="width: 200px; height: 100%; background-color: #D3DCE6; color: #333; text-align: center;">
+                <el-menu default-active="1" class="el-menu-vertical-demo" @select="handleSelect">
+                    <el-menu-item index="1">文章列表</el-menu-item>
+                    <el-menu-item index="2">添加文章</el-menu-item>
+                    <el-menu-item index="3">收藏管理</el-menu-item>
+                    <el-menu-item index="4">关注管理</el-menu-item>
+                    <el-menu-item index="5">我的文章</el-menu-item>
+                    <el-menu-item index="6">管理员</el-menu-item>
+                    <el-menu-item index="7">系统设置</el-menu-item>
+                </el-menu>
+            </el-aside>
+
+            <!-- 主要内容区域，占满剩余空间，背景颜色为#E9EEF3，高度与内容区域相同 -->
+            <el-main style="height: 100%; background-color: #E9EEF3; color: #333; text-align: center;overflow: hidden;">
+                <el-form ref="userForm" :model="userInfo" :rules="userFormRules" label-width="80px"
+                         style="margin-top: 30px;">
+                    <el-form-item label="用户名" prop="username">
+                        <el-input v-model="userInfo.username" type="username"></el-input>
+                    </el-form-item>
+                    <el-form-item label="密码" prop="password">
+                        <el-input v-model="userInfo.password" type="password"></el-input>
+                    </el-form-item>
+                    <el-form-item label="邮箱" prop="email">
+                        <el-input v-model="userInfo.email"></el-input>
+                    </el-form-item>
+                    <el-form-item>
+                        <el-button type="primary" @click="submitForm('registerForm')">修改</el-button>
+                    </el-form-item>
+                </el-form>
+
+
+            </el-main>
+
+        </el-container>
+    </el-container>
+</div>
+</body>
+
+<!-- Vue实例 -->
+<script>
+    new Vue({
+        el: "#app",
+        data: {
+            id:'',
+            username:'',
+            userInfo: {
+                username: "",
+                password: "",
+                email: ""
+            },
+            userFormRules: {
+                username: [
+                    {required: true, message: '请输入用户名', trigger: 'blur'}
+                ],
+                password: [
+                    {required: true, message: '请输入密码', trigger: 'blur'},
+                    {min: 6, max: 20, message: '密码长度在6到20个字符之间', trigger: 'blur'}
+                ],
+            }
+        },
+        created() {
+            this.loadArticles();
+            this.doCookie();
+        },
+        methods: {
+            doCookie() {
+                var cookies = document.cookie.split("; ");
+                for (var i = 0; i < cookies.length; i++) {
+                    var parts = cookies[i].split("=");
+                    var name = parts[0];
+                    var value = parts[1];
+                    if (name == "userId") {
+                        this.id = value;
+                    } else if (name == "username") {
+                        this.username = value;
+                    }
+                }
+            },
+            loadArticles() {
+                axios.get('http://localhost:8080/article2.0/setting')
+                    .then(response => {
+                        this.userInfo.username = response.data.username,
+                        this.userInfo.password = response.data.password,
+                        this.userInfo.email = response.data.email
+                    })
+                    .catch(error => {
+                        console.log(error)
+                    })
+            },
+            submitForm() {
+                this.$refs.userForm.validate((valid) => {
+                    if (valid) {
+                        var params = new URLSearchParams();
+                        var username = this.userInfo.username;
+                        var password = this.userInfo.password;
+                        var email = this.userInfo.email;
+                        console.log(username, password, email);
+                        params.append('username', username);
+                        params.append('password', password);
+                        params.append('email', email);
+                        // TODO: 发送请求，更新用户信息
+                        axios.post('http://localhost:8080/article2.0/setting', params)
+                            .then((response) => {
+                                console.log(response.data);
+                                if(response.data == '1')
+                                {
+                                    this.$message.success('修改成功');
+                                }
+                            })
+                            .catch((error) => {
+                                console.error(error);
+                                this.$message.error('修改失败');
+                            });
+                    } else {
+                        return false;
+                    }
+                });
+            },
+            handleSelect(index) {
+                console.log(index);
+                // TODO：根据不同的index跳值转到不同的页面
+                switch (index) {
+                    case '1':
+                        // 跳转到文章列表页面
+                        window.location.href = 'main.html';
+                        break;
+                    case '2':
+                        // 跳转到添加文章页面
+                        window.location.href = 'add_article.html';
+                        break;
+                    case '3':
+                        // 跳转到收藏管理页面
+                        window.location.href = 'favorites.html';
+                        break;
+                    case '4':
+                        // 跳转到关注管理页面
+                        window.location.href = 'follows.html';
+                        break;
+                    case '5':
+                        // 跳转到我的文章页面
+                        window.location.href = 'my_articles.html';
+                        break;
+                    case '6':
+                        // 跳转到用户管理页面
+                        if (this.username == 'admin') {
+                            window.location.href = 'user_manage.html';
+                        } else {
+                            this.$message.error('无权限');
+                        }
+                        break;
+                    case '7':
+                        // 跳转到系统设置页面
+                        window.location.href = 'settings.html';
+                        break;
+                    default:
+                        // 默认情况下，不进行任何操作
+                        break;
+                }
+            },
+            logout() {
+                // 向服务器发送请求，清除用户登录状态
+                axios.get('http://localhost:8080/article2.0/logout')
+                    .then(response => {
+                        if (response.data == '1') {
+                            // 清除成功，跳转到登录页面
+                            window.location.href = 'login.html';
+                        }
+                    })
+                    .catch(error => {
+                        // 清除失败，提示用户
+                        this.$message.error('退出登录失败，请稍后重试！');
+                    });
+            },
+        }
+    });
+</script>
+
+</html>
+
+

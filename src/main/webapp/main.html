@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>文章管理系统</title>
+    <!-- 引入Vue和ElementUI的CSS文件 -->
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css"/>
+</head>
+<body>
+<div id="app">
+
+    <el-container style="height: 100vh">
+        <el-header style="
+        height: 100px;
+        background-color: #b3c0d1;
+        color: #333;
+        text-align: center;
+      ">
+            <span style="font-size: 36px">文章管理系统</span>
+            <el-button style="position: absolute; right: 20px; top: 20px" type="danger" @click="logout">退出</el-button>
+        </el-header>
+        <el-container>
+
+            <el-aside
+                    style="width: 200px; height: 100%; background-color: #D3DCE6; color: #333; text-align: center;">
+                <el-menu default-active="1" class="el-menu-vertical-demo" @select="handleSelect">
+                    <el-menu-item index="1">文章列表</el-menu-item>
+                    <el-menu-item index="2">添加文章</el-menu-item>
+                    <el-menu-item index="3">收藏管理</el-menu-item>
+                    <el-menu-item index="4">关注管理</el-menu-item>
+                    <el-menu-item index="5">我的文章</el-menu-item>
+                    <el-menu-item index="6">管理员</el-menu-item>
+                    <el-menu-item index="7">系统设置</el-menu-item>
+                </el-menu>
+            </el-aside>
+            <el-main style="
+          height: 100%;
+          background-color: #e9eef3;
+          color: #333;
+          text-align: center;
+          overflow: auto;
+        ">
+                <el-input v-model="searchText" placeholder="请输入关键字"
+                          style="width: 200px; text-align: left;"></el-input>
+                <el-button type="primary" @click="search">搜索</el-button>
+                <br>
+                <el-table :data="articles" style="width: 100%">
+                    <el-table-column prop="title" label="题目"></el-table-column>
+                    <el-table-column prop="author" label="作者"></el-table-column>
+                    <el-table-column prop="title_time" label="日期"></el-table-column>
+                    <el-table-column label="操作">
+                        <template slot-scope="scope">
+                            <el-button type="primary" @click="view(scope.row)">查看</el-button>
+                            <el-button type="success" @click="followConfirm(scope.row)">关注</el-button>
+                            <el-button type="warning" @click="favoriteConfirm(scope.row)">收藏</el-button>
+                            <el-button type="info" @click="downloadConfirm(scope.row)">下载</el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+            </el-main>
+        </el-container>
+    </el-container>
+</div>
+
+<!-- 引入Vue和ElementUI的JS文件 -->
+<script src="https://unpkg.com/vue@2.6.14"></script>
+<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script src="./js/axios.js"></script>
+
+<script>
+    new Vue({
+        el: "#app",
+        data() {
+            return {
+                id: '',
+                username: '',
+                password: '',
+                articles: [],
+                searchText: ""
+            }
+        },
+        created() {
+            this.loadArticles();
+            this.doCookie();
+        },
+        methods: {
+            downloadConfirm(row) {
+                if (confirm(`确认下载文件 ${row.title}？`)) {
+                    // 调用后端接口下载文件
+                    axios({
+                        url: 'http://localhost:8080/article2.0/excel?id=' + row.id,
+                        method: 'GET',
+                        responseType: 'blob', // 设置响应数据类型为二进制数据
+                    }).then(response => {
+                        const contentDisposition = response.headers['content-disposition']
+                        const fileNameMatch = contentDisposition.match(/filename="(.*?)"/)
+                        const fileName = fileNameMatch ? fileNameMatch[1] : 'filename.xlsx'
+                        const blob = new Blob([response.data], {type: response.headers['content-type']})
+                        const url = window.URL.createObjectURL(blob)
+                        const link = document.createElement('a')
+                        link.href = url
+                        link.download = decodeURIComponent(fileName) // 设置下载文件名
+                        link.click()
+                        window.URL.revokeObjectURL(url) // 释放URL对象
+                    })
+                }
+            },
+            doCookie() {
+                let cookies = document.cookie.split("; ");
+                console.log(cookies.length)
+                for (let i = 0; i < cookies.length; i++) {
+                    let parts = cookies[i].split("=");
+                    let name = parts[0];
+                    let value = parts[1];
+                    if (name === "userId") {
+                        this.id = value;
+                        console.log('id' + this.id);
+                    } else if (name === "username") {
+                        this.username = value;
+                        console.log('username' + this.username);
+                    }else if (name === "password") {
+                        this.password = value;
+                        console.log('password' + this.password);
+                    }
+                }
+            },
+            search() {
+                axios.get('http://localhost:8080/article2.0/main/querySearch?str=' + this.searchText)
+                    .then(response => {
+                        console.log("搜索")
+                        this.articles = response.data.map(item => ({
+                            id: item.id,
+                            title: item.title,
+                            title_time: item.title_time,
+                            author: item.content,
+                            author_id: item.author_id
+                        }))
+                    })
+                    .catch(error => {
+                        console.log(error)
+                    })
+                this.$message.success('搜索完成')
+            },
+            loadArticles() {
+                axios.get('http://localhost:8080/article2.0/main/queryAll')
+                    .then(response => {
+                        console.log("执行created()")
+                        this.articles = response.data.map(item => ({
+                            id: item.id,
+                            title: item.title,
+                            title_time: item.title_time,
+                            author: item.content,
+                            author_id: item.author_id
+                        }))
+                    })
+                    .catch(error => {
+                        console.log(error)
+                    })
+            },
+            handleSelect(index) {
+                // TODO: 根据不同的 index 跳转到不同的页面
+                switch (index) {
+                    case '1':
+                        // 跳转到文章列表页面
+                        window.location.href = 'article.html?id=' + this.id;
+                        break;
+                    case '2':
+                        // 跳转到添加文章页面
+                        window.location.href = 'add_article.html';
+                        break;
+                    case '3':
+                        // 跳转到收藏管理页面
+                        window.location.href = 'favorites.html';
+                        break;
+                    case '4':
+                        // 跳转到关注管理页面
+                        window.location.href = 'follows.html';
+                        break;
+                    case '5':
+                        // 跳转到我的文章页面
+                        window.location.href = 'my_articles.html';
+                        break;
+                    case '6':
+                        console.log('1223')
+                        console.log(this.username)
+
+                        // 跳转到用户管理页面
+                        if (this.username == 'admin') {
+                            window.location.href = 'user_manage.html';
+                        } else {
+                            this.$message.error('无权限');
+                        }
+                        break;
+                    case '7':
+                        // 跳转到系统设置页面
+                        window.location.href = 'settings.html';
+                        break;
+                    default:
+                        // 默认情况下，不进行任何操作
+                        break;
+                }
+            },
+            doCollect(row) {
+                axios.get('http://localhost:8080/article2.0/collect/addCollect?id=' + row.id)
+                    .then(response => {
+                        // 提交成功，重置表单并提示用户
+                        if (response.data == '1') {
+                            this.$message.success('收藏成功！');
+                        } else if (response.data == '2') {
+                            this.$message.error('不能重复收藏！');
+                        }
+                    })
+                    .catch(error => {
+                        // 提交失败，提示用户
+                        this.$message.error('收藏失败，请稍后重试！');
+                    });
+            },
+            doFollow(row) {
+                var params = new URLSearchParams();
+                var followId = row.author_id;
+                console.log(followId);
+                params.append('followId', followId);
+                axios.post('http://localhost:8080/article2.0/follow', params)
+                    .then(response => {
+                        // 提交成功，重置表单并提示用户
+                        //this.$refs.articleForm.resetFields();
+                        if (response.data == '1') {
+                            this.$message.success('关注成功！');
+                        } else if (response.data == '0') {
+                            this.$message.error('不能重复关注！');
+                        } else if (response.data == '2') {
+                            this.$message.error('不能关注自己！');
+                        }
+                    })
+                    .catch(error => {
+                        // 提交失败，提示用户
+                        this.$message.error('关注失败，请稍后重试！');
+                    });
+            }
+            ,
+
+            logout() {
+                // 向服务器发送请求，清除用户登录状态
+                axios.get('http://localhost:8080/article2.0/logout')
+                    .then(response => {
+                        if (response.data == '1') {
+                            // 清除成功，跳转到登录页面
+                            window.location.href = 'login.html';
+                        }
+                    })
+                    .catch(error => {
+                        // 清除失败，提示用户
+                        this.$message.error('退出登录失败，请稍后重试！');
+                    });
+            }
+            ,
+            view(row) {
+                console.log('查看', row)
+                window.location.href = 'article.html?id=' + row.id;
+            }
+            ,
+            followConfirm(row) {
+                if (confirm('确定要关注吗？')) {
+                    console.log('关注', row);
+                    this.doFollow(row);
+                }
+            }
+            ,
+            favoriteConfirm(row) {
+                if (confirm('确定要收藏吗？')) {
+                    this.doCollect(row);
+                }
+            }
+        }
+    })
+</script>
+</body>
+</html>

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>文章管理系统</title>
+    <!-- 引入Vue和ElementUI的CSS文件 -->
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css"/>
+    <!-- 引入Vue和ElementUI的JS文件 -->
+    <script src="https://unpkg.com/vue@2.6.14"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <!-- 引入Axios的JS文件 -->
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+
+<!-- 设置<body>的overflow属性为hidden，以禁止页面滚动条 -->
+
+<body style="overflow: hidden;">
+<div id="app">
+    <!-- 整个页面使用一个容器元素 -->
+    <el-container style="height: 100vh;">
+        <!-- 顶部区域，高度为100px，背景颜色为#B3C0D1 -->
+        <el-header style="height: 100px; background-color: #B3C0D1; color: #333; text-align: center;">
+            <span style="font-size: 36px">文章管理系统</span>
+            <el-button style="position: absolute; right: 20px; top: 20px;" type="danger" @click="logout()">退出
+            </el-button>
+        </el-header>
+        <!-- 内容区域，占满剩余空间 -->
+        <el-container style="height: calc(100vh - 100px);">
+            <!-- 左侧菜单区域，宽度为200px，背景颜色为#D3DCE6，高度与内容区域相同 -->
+            <el-aside
+                    style="width: 200px; height: 100%; background-color: #D3DCE6; color: #333; text-align: center;">
+                <el-menu default-active="1" class="el-menu-vertical-demo" @select="handleSelect">
+                    <el-menu-item index="1">文章列表</el-menu-item>
+                    <el-menu-item index="2">添加文章</el-menu-item>
+                    <el-menu-item index="3">收藏管理</el-menu-item>
+                    <el-menu-item index="4">关注管理</el-menu-item>
+                    <el-menu-item index="5">我的文章</el-menu-item>
+                    <el-menu-item index="6">管理员</el-menu-item>
+                    <el-menu-item index="7">系统设置</el-menu-item>
+                </el-menu>
+            </el-aside>
+            <!-- 主要内容区域，占满剩余空间，背景颜色为#E9EEF3，高度与内容区域相同 -->
+            <el-main
+                    style="height: 100%; background-color: #E9EEF3; color: #333; text-align: center;overflow: hidden;">
+
+                <el-form ref="articleForm" :model="article" :rules="rules" label-width="80px">
+                    <el-form-item label="标题" prop="title">
+                        <el-input v-model="article.title" :rows="2"></el-input>
+                    </el-form-item>
+                    <el-form-item label="内容" prop="content">
+                        <el-input type="textarea" v-model="article.content" :rows="30"></el-input>
+                    </el-form-item>
+                    <el-form-item>
+                        <el-button type="primary" @click="submitForm">上传</el-button>
+                    </el-form-item>
+                </el-form>
+
+            </el-main>
+
+        </el-container>
+    </el-container>
+</div>
+</body>
+
+<!-- Vue实例 -->
+<script>
+    new Vue({
+        el: "#app", //vue接管区域
+        data: {
+            id: '',
+            username: '',
+            article: {
+                title: '',
+                content: ''
+            },
+            rules: {
+                title: [
+                    {required: true, message: '请填写文章标题', trigger: 'blur'}
+                ],
+                content: [
+                    {required: true, message: '请填写文章内容', trigger: 'blur'}
+                ]
+            }
+        },
+        created() {
+            this.doCookie();
+
+        },
+        methods: {
+            doCookie() {
+                var cookies = document.cookie.split("; ");
+                for (var i = 0; i < cookies.length; i++) {
+                    var parts = cookies[i].split("=");
+                    var name = parts[0];
+                    var value = parts[1];
+                    if (name === "userId") {
+                        this.id = value;
+                    } else if (name === "username") {
+                        this.username = value;
+                    }
+                }
+            },
+        submitForm() {
+            // 首先进行表单验证
+            this.$refs.articleForm.validate(valid => {
+                if (valid) {
+                    // 如果表单验证通过，则提交表单数据
+                    this.doPost();
+                } else {
+                    // 如果表单验证不通过，则提示用户
+                    this.$message.warning('请填写完整的文章标题和内容！');
+                }
+            });
+        },
+        doPost() {
+            var params = new URLSearchParams();
+            var id = this.id;
+            var title = this.article.title;
+            var content = this.article.content;
+            params.append('id', id);
+            params.append('title', title);
+            params.append('content', content);
+            console.log(params);
+            axios.post('http://localhost:8080/article2.0/article/addArticle', params)
+                .then(response => {
+                    if (response.data == '1') {
+                        this.$message.success('上传成功！');
+                    } else {
+                        this.$message.error('上传失败，请稍后重试！');
+                    }
+                })
+                .catch(error => {
+                    // 提交失败，提示用户
+                    this.$message.error('上传失败，请稍后重试！');
+                });
+        },
+        handleSelect(index) {
+            console.log(index);
+            // TODO：根据不同的index跳值转到不同的页面
+            switch (index) {
+                case '1':
+                    // 跳转到文章列表页面
+                    window.location.href = 'main.html';
+                    break;
+                case '2':
+                    // 跳转到添加文章页面
+                    window.location.href = 'add_article.html';
+                    break;
+                case '3':
+                    // 跳转到收藏管理页面
+                    window.location.href = 'favorites.html';
+                    break;
+                case '4':
+                    // 跳转到关注管理页面
+                    window.location.href = 'follows.html';
+                    break;
+                case '5':
+                    // 跳转到我的文章页面
+                    window.location.href = 'my_articles.html';
+                    break;
+                case '6':
+                    // 跳转到用户管理页面
+                    if (this.username == 'admin') {
+                        window.location.href = 'user_manage.html';
+                    } else {
+                        this.$message.error('无权限');
+                    }
+                    break;
+                case '7':
+                    // 跳转到系统设置页面
+                    window.location.href = 'settings.html';
+                    break;
+                default:
+                    // 默认情况下，不进行任何操作
+                    break;
+            }
+
+        },
+            logout() {
+                // 向服务器发送请求，清除用户登录状态
+                axios.get('http://localhost:8080/article2.0/logout')
+                    .then(response => {
+                        if (response.data == '1') {
+                            // 清除成功，跳转到登录页面
+                            window.location.href = 'login.html';
+                        }
+                    })
+                    .catch(error => {
+                        // 清除失败，提示用户
+                        this.$message.error('退出登录失败，请稍后重试！');
+                    });
+            },
+        doCookie() {
+            var cookies = document.cookie.split("; ");
+            for (var i = 0; i < cookies.length; i++) {
+                var parts = cookies[i].split("=");
+                var name = parts[0];
+                var value = parts[1];
+                if (name === "userId") {
+                    this.id = value;
+                } else if (name === "username") {
+                    this.username = value;
+                }
+            }
+        }
+    }
+    })
+    ;
+</script>
+
+</html>

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>用户管理</title>
+    <!-- 引入Vue和ElementUI的CSS文件 -->
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css"/>
+    <!-- 引入Vue和ElementUI的JS文件 -->
+    <script src="https://unpkg.com/vue@2.6.14"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <!-- 引入Axios的JS文件 -->
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+</head>
+
+<!-- 设置<body>的overflow属性为hidden，以禁止页面滚动条 -->
+
+<body style="overflow: hidden;">
+<div id="app">
+    <!-- 整个页面使用一个容器元素 -->
+    <el-container style="height: 100vh;">
+        <!-- 顶部区域，高度为100px，背景颜色为#B3C0D1 -->
+        <el-header style="height: 100px; background-color: #B3C0D1; color: #333; text-align: center;">
+            <span style="font-size: 36px">文章管理系统</span>
+            <el-button style="position: absolute; right: 20px; top: 20px;" type="danger"
+                       @click="logout()">退出
+            </el-button>
+        </el-header>
+        <!-- 内容区域，占满剩余空间 -->
+        <el-container style="height: calc(100vh - 100px);">
+            <!-- 左侧菜单区域，宽度为200px，背景颜色为#D3DCE6，高度与内容区域相同 -->
+            <el-aside
+                    style="width: 200px; height: 100%; background-color: #D3DCE6; color: #333; text-align: center;">
+                <el-menu default-active="1" class="el-menu-vertical-demo" @select="handleSelect">
+                    <el-menu-item index="1">文章列表</el-menu-item>
+                    <el-menu-item index="2">添加文章</el-menu-item>
+                    <el-menu-item index="3">收藏管理</el-menu-item>
+                    <el-menu-item index="4">关注管理</el-menu-item>
+                    <el-menu-item index="5">我的文章</el-menu-item>
+                    <el-menu-item index="6">管理员</el-menu-item>
+                    <el-menu-item index="7">系统设置</el-menu-item>
+                </el-menu>
+            </el-aside>
+            <!-- 主要内容区域，占满剩余空间，背景颜色为#E9EEF3，高度与内容区域相同 -->
+            <el-main
+                    style="height: 100%; background-color: #E9EEF3; color: #333; text-align: center; overflow: hidden;">
+
+                <el-upload
+                        class="upload-demo"
+                        action="http://localhost:8080/article2.0/excel"
+                        :on-preview="handlePreview"
+                        :on-remove="handleRemove"
+                        :before-remove="beforeRemove"
+                        multiple
+                        :limit="3"
+                        :on-exceed="handleExceed"
+                        :file-list="fileList">
+                    <el-button size="small" type="primary">点击上传</el-button>
+                    <div slot="tip" class="el-upload__tip">只能上传excel文件，且不超过500kb</div>
+                </el-upload>
+
+                <el-table :data="tableData" style="width: 100%">
+                    <el-table-column prop="username" label="用户"></el-table-column>
+                    <el-table-column prop="count" label="文章数量"></el-table-column>
+                    <el-table-column label="操作">
+                        <template slot-scope="scope">
+                            <el-button type="danger" size="small" @click="banUser(scope.row)">封号</el-button>
+                            <el-button type="success" size="small" @click="deletebanUser(scope.row)">解封</el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+
+                <el-table :data="articles" style="width: 100%">
+                    <el-table-column prop="title" label="题目"></el-table-column>
+                    <el-table-column prop="author" label="作者"></el-table-column>
+                    <el-table-column prop="title_time" label="日期"></el-table-column>
+                    <el-table-column label="操作">
+                        <template slot-scope="scope">
+
+                            <el-button type="warning" @click="deleteConfirm(scope.row)">删除</el-button>
+
+                        </template>
+                    </el-table-column>
+                </el-table>
+
+            </el-main>
+        </el-container>
+    </el-container>
+</div>
+</body>
+
+<!-- Vue实例 -->
+<script>
+    new Vue({
+        el: "#app", //vue接管区域
+        data: {
+            id: '',
+            username: '',
+            tableData: [],
+            articles: [],
+        },
+        created() {
+            this.doCookie();
+            this.loadArticles1();
+            this.loadArticles2();
+        },
+        methods: {
+            handleRemove(file, fileList) {
+                console.log(file, fileList);
+            },
+            handlePreview(file) {
+                console.log(file);
+            },
+            handleExceed(files, fileList) {
+                this.$message.warning(`当前限制选择 3 个文件，本次选择了 ${files.length} 个文件，共选择了 ${files.length + fileList.length} 个文件`);
+            },
+            beforeRemove(file, fileList) {
+                return this.$confirm(`确定移除 ${file.name}？`);
+            },
+            deleteConfirm(row) {
+                if (confirm('确定要删除吗？')) {
+                    console.log('删除', row)
+                    axios.get('http://localhost:8080/article2.0/article/deleteArticle?id=' + row.id)
+                        .then(response => {
+                            // 根据服务器响应数据，设置提示框的内容和类型
+                            if (response.data == '1') {
+                                this.$message.success('删除成功');
+                                this.loadArticles2();
+                            } else {
+                                this.$message.error('删除失败');
+                            }
+                        })
+                        .catch(error => {
+                            console.log(error);
+                        })
+                }
+            },
+            deletebanUser(row) {
+                var params = new URLSearchParams();
+                var id = row.id;
+                var right = '0';
+                params.append('id', id);
+                params.append('right', right);
+                axios.post('http://localhost:8080/article2.0/admin', params)
+                    .then(response => {
+                        if (response.data == '1') {
+                            this.$message.success('设置成功');
+                        } else if (response.data == '-1') {
+                            this.$message.error('已封禁');
+                        } else if (response.data == '0') {
+                            this.$message.error('已解封');
+                        }
+                    })
+                    .catch(error => {
+                        console.log(error)
+                    })
+            },
+            banUser(row) {
+                var params = new URLSearchParams();
+                var id = row.id;
+                var right = '-1';
+                params.append('id', id);
+                params.append('right', right);
+                axios.post('http://localhost:8080/article2.0/admin', params)
+                    .then(response => {
+                        if (response.data == '1') {
+                            this.$message.success('设置成功');
+                        } else {
+                            this.$message.error('设置失败');
+                        }
+                    })
+                    .catch(error => {
+                        console.log(error)
+                    })
+            },
+            loadArticles1() {
+                axios.get('http://localhost:8080/article2.0/admin')
+                    .then(response => {
+                        this.tableData = response.data.map(item => ({
+                            id: item.id,
+                            username: item.username,
+                            count: item.password
+                        }))
+                    })
+                    .catch(error => {
+                        console.log(error)
+                    })
+            },
+            loadArticles2() {
+                axios.get('http://localhost:8080/article2.0/main/queryAll')
+                    .then(response => {
+                        console.log("执行created()")
+                        this.articles = response.data.map(item => ({
+                            id: item.id,
+                            title: item.title,
+                            title_time: item.title_time,
+                            author: item.content,
+                            author_id: item.author_id
+                        }))
+                    })
+                    .catch(error => {
+                        console.log(error)
+                    })
+            },
+            handleSelect(index) {
+                console.log(index);
+                // TODO：根据不同的index跳值转到不同的页面
+                switch (index) {
+                    case '1':
+                        // 跳转到文章列表页面
+                        window.location.href = 'main.html';
+                        break;
+                    case '2':
+                        // 跳转到添加文章页面
+                        window.location.href = 'add_article.html';
+                        break;
+                    case '3':
+                        // 跳转到收藏管理页面
+                        window.location.href = 'favorites.html';
+                        break;
+                    case '4':
+                        // 跳转到关注管理页面
+                        window.location.href = 'follows.html';
+                        break;
+                    case '5':
+                        // 跳转到我的文章页面
+                        window.location.href = 'my_articles.html';
+                        break;
+                    case '6':
+                        // 跳转到用户管理页面
+                        if (username == 'admin') {
+                            window.location.href = 'user_manage.html';
+                        } else {
+                            this.$message.error('无权限');
+                        }
+                        break;
+                    case '7':
+                        // 跳转到系统设置页面
+                        window.location.href = 'settings.html';
+                        break;
+                    default:
+                        // 默认情况下，不进行任何操作
+                        break;
+                }
+
+            },
+            logout() {
+                // 向服务器发送请求，清除用户登录状态
+                axios.get('http://localhost:8080/article2.0/logout')
+                    .then(response => {
+                        if (response.data == '1') {
+                            // 清除成功，跳转到登录页面
+                            window.location.href = 'login.html';
+                        }
+                    })
+                    .catch(error => {
+                        // 清除失败，提示用户
+                        this.$message.error('退出登录失败，请稍后重试！');
+                    });
+            },
+            doCookie() {
+                var cookies = document.cookie.split("; ");
+                for (var i = 0; i < cookies.length; i++) {
+                    var parts = cookies[i].split("=");
+                    var name = parts[0];
+                    var value = parts[1];
+                    if (name === "userId") {
+                        this.id = value;
+                    } else if (name === "username") {
+                        this.username = value;
+                    }
+                }
+            }
+        }
+    })
+</script>
+
+</html>
